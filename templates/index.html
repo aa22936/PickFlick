@@ -1,22 +1,184 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restaurant Voting</title>
+    <style>
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        h1, h2, h3 {
+            color: #333;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        /* Form Styling */
+        form {
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        input[type="text"],
+        input[type="hidden"],
+        textarea {
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        textarea {
+            height: 100px;
+            resize: none;
+        }
+
+        button {
+            background-color: #5c6bc0;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #3f51b5;
+        }
+
+        /* Group List Styling */
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        a {
+            text-decoration: none;
+            color: #5c6bc0;
+            font-size: 1.1em;
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: #3f51b5;
+        }
+
+        /* Restaurant Swipe Section */
+        .restaurant-card {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin: 15px 0;
+        }
+
+        .restaurant-card h4 {
+            font-size: 1.4em;
+            margin-bottom: 10px;
+        }
+
+        .vote-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .vote-buttons form {
+            flex: 1;
+        }
+
+        .vote-buttons button {
+            width: 100%;
+            padding: 10px;
+            font-size: 1em;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .vote-buttons button:hover {
+            background-color: #3f51b5;
+        }
+
+        /* Results Section */
+        .results-link {
+            display: inline-block;
+            margin-top: 20px;
+            background-color: #5c6bc0;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 1.2em;
+            transition: background-color 0.3s ease;
+        }
+
+        .results-link:hover {
+            background-color: #3f51b5;
+        }
+    </style>
 </head>
+
 <body>
+
     <h1>Restaurant Voting</h1>
 
-    <h2>Create Group</h2>
-    <form method="POST">
-        <input type="text" name="group_name" placeholder="Group Name" required>
-        <button type="submit" name="create_group">Create Group</button>
-    </form>
+    <section>
+        <h2>Create Group</h2>
+        <form method="POST">
+            <input type="text" name="group_name" placeholder="Group Name" required>
+            <button type="submit" name="create_group">Create Group</button>
+        </form>
+    </section>
 
     <hr>
 
     {% if group_info %}
+    <section>
         <h2>Group: {{ group_info.name }}</h2>
 
         <h3>Add Restaurants</h3>
@@ -30,28 +192,40 @@
         <form method="POST">
             <input type="hidden" name="group_id" value="{{ group_id }}">
             {% for restaurant in group_info.restaurants %}
-                <div>
-                    <h4>{{ restaurant }}</h4>
+            <div class="restaurant-card">
+                <h4>{{ restaurant }}</h4>
+                <div class="vote-buttons">
                     <form method="POST">
                         <input type="hidden" name="group_id" value="{{ group_id }}">
                         <input type="hidden" name="restaurant" value="{{ restaurant }}">
                         <input type="hidden" name="user_id" value="user_{{ loop.index }}">
                         <button type="submit" name="vote" value="yes">Swipe Right (Like)</button>
+                    </form>
+                    <form method="POST">
+                        <input type="hidden" name="group_id" value="{{ group_id }}">
+                        <input type="hidden" name="restaurant" value="{{ restaurant }}">
+                        <input type="hidden" name="user_id" value="user_{{ loop.index }}">
                         <button type="submit" name="vote" value="no">Swipe Left (Dislike)</button>
                     </form>
                 </div>
+            </div>
             {% endfor %}
         </form>
 
         <h3>Results</h3>
-        <a href="{{ url_for('results', group_id=group_id) }}">See Results</a>
+        <a href="{{ url_for('results', group_id=group_id) }}" class="results-link">See Results</a>
+    </section>
     {% endif %}
 
-    <h3>Existing Groups</h3>
-    <ul>
-        {% for group_id, group in groups.items() %}
+    <section>
+        <h3>Existing Groups</h3>
+        <ul>
+            {% for group_id, group in groups.items() %}
             <li><a href="{{ url_for('home', group_id=group_id) }}">{{ group.name }}</a></li>
-        {% endfor %}
-    </ul>
+            {% endfor %}
+        </ul>
+    </section>
+
 </body>
+
 </html>
