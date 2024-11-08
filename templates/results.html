@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting Results</title>
+</head>
+<body>
+    <h1>Results for Group: {{ groups[group_id].name }}</h1>
+
+    <h3>Restaurant Voting Results</h3>
+    <ul>
+        {% for restaurant, result in results.items() %}
+            <li>
+                <strong>{{ restaurant }}:</strong> 
+                {% if result == "Selected" %}
+                    <span style="color: green;">{{ result }}</span>
+                {% else %}
+                    <span>{{ result }}</span>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+
+    <hr>
+    <a href="{{ url_for('home', group_id=group_id) }}">Back to Group</a>
+</body>
+</html>

@@ -3,57 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Group Decision-Making App</title>
+    <title>Restaurant Voting</title>
 </head>
 <body>
-    <h1>Welcome to the Group Decision-Making App!</h1>
+    <h1>Restaurant Voting</h1>
 
-    <!-- Create Group Form -->
-    <h2>Create a Group</h2>
+    <h2>Create Group</h2>
     <form method="POST">
-        <label for="group_name">Group Name:</label>
-        <input type="text" id="group_name" name="group_name" required>
+        <input type="text" name="group_name" placeholder="Group Name" required>
         <button type="submit" name="create_group">Create Group</button>
     </form>
 
-    <!-- Add Items Form -->
+    <hr>
+
     {% if group_info %}
-        <h2>Add Items to Group: {{ group_info['name'] }}</h2>
+        <h2>Group: {{ group_info.name }}</h2>
+
+        <h3>Add Restaurants</h3>
         <form method="POST">
-            <input type="hidden" name="group_id" value="{{ group_info['id'] }}">
-            <label for="items">Items (comma separated):</label>
-            <input type="text" id="items" name="items" required>
-            <button type="submit" name="add_items">Add Items</button>
+            <input type="hidden" name="group_id" value="{{ group_id }}">
+            <textarea name="restaurants" placeholder="Enter restaurants separated by commas" required></textarea>
+            <button type="submit" name="add_restaurants">Add Restaurants</button>
         </form>
+
+        <h3>Swipe Right or Left</h3>
+        <form method="POST">
+            <input type="hidden" name="group_id" value="{{ group_id }}">
+            {% for restaurant in group_info.restaurants %}
+                <div>
+                    <h4>{{ restaurant }}</h4>
+                    <form method="POST">
+                        <input type="hidden" name="group_id" value="{{ group_id }}">
+                        <input type="hidden" name="restaurant" value="{{ restaurant }}">
+                        <input type="hidden" name="user_id" value="user_{{ loop.index }}">
+                        <button type="submit" name="vote" value="yes">Swipe Right (Like)</button>
+                        <button type="submit" name="vote" value="no">Swipe Left (Dislike)</button>
+                    </form>
+                </div>
+            {% endfor %}
+        </form>
+
+        <h3>Results</h3>
+        <a href="{{ url_for('results', group_id=group_id) }}">See Results</a>
     {% endif %}
 
-    <!-- Voting Form -->
-    {% if group_info and group_info['items'] %}
-        <h2>Vote for an Item</h2>
-        <form method="POST">
-            <input type="hidden" name="group_id" value="{{ group_info['id'] }}">
-            <label for="item">Select Item:</label>
-            <select name="item" id="item" required>
-                {% for item in group_info['items'] %}
-                    <option value="{{ item }}">{{ item }}</option>
-                {% endfor %}
-            </select>
-            <label for="vote">Vote:</label>
-            <input type="radio" name="vote" value="yes" required> Yes
-            <input type="radio" name="vote" value="no" required> No
-            <label for="user_id">Your ID:</label>
-            <input type="text" id="user_id" name="user_id" required>
-            <button type="submit" name="vote">Vote</button>
-        </form>
-    {% endif %}
-
-    <!-- Display Groups -->
-    <h2>Existing Groups</h2>
+    <h3>Existing Groups</h3>
     <ul>
         {% for group_id, group in groups.items() %}
-            <li>
-                <a href="{{ url_for('home', group_id=group_id) }}">{{ group['name'] }}</a>
-            </li>
+            <li><a href="{{ url_for('home', group_id=group_id) }}">{{ group.name }}</a></li>
         {% endfor %}
     </ul>
 </body>
