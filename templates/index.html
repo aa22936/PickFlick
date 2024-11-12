@@ -1,231 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant Voting</title>
+    <title>Group Voting App</title>
     <style>
-        /* General Reset */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f7f6;
-            color: #333;
-            line-height: 1.6;
-            padding: 20px;
-        }
-
-        h1, h2, h3 {
-            color: #333;
-        }
-
-        h1 {
-            font-size: 2.5em;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        h2 {
-            font-size: 1.8em;
-            margin-bottom: 10px;
-        }
-
-        h3 {
-            font-size: 1.5em;
-            margin-bottom: 10px;
-        }
-
-        /* Form Styling */
-        form {
-            margin-bottom: 20px;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        input[type="text"],
-        input[type="hidden"],
-        textarea {
-            padding: 10px;
-            font-size: 1em;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        textarea {
-            height: 100px;
-            resize: none;
-        }
-
-        button {
-            background-color: #5c6bc0;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: background-color 0.3s ease;
-        }
-
-        button:hover {
-            background-color: #3f51b5;
-        }
-
-        /* Group List Styling */
-        ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        li {
-            margin: 10px 0;
-            padding: 10px;
-            background-color: #fff;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        a {
-            text-decoration: none;
-            color: #5c6bc0;
-            font-size: 1.1em;
-            transition: color 0.3s ease;
-        }
-
-        a:hover {
-            color: #3f51b5;
-        }
-
-        /* Restaurant Swipe Section */
-        .restaurant-card {
-            background-color: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            margin: 15px 0;
-        }
-
-        .restaurant-card h4 {
-            font-size: 1.4em;
-            margin-bottom: 10px;
-        }
-
-        .vote-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        .vote-buttons form {
-            flex: 1;
-        }
-
-        .vote-buttons button {
-            width: 100%;
-            padding: 10px;
-            font-size: 1em;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .vote-buttons button:hover {
-            background-color: #3f51b5;
-        }
-
-        /* Results Section */
-        .results-link {
-            display: inline-block;
-            margin-top: 20px;
-            background-color: #5c6bc0;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 4px;
-            text-decoration: none;
-            font-size: 1.2em;
-            transition: background-color 0.3s ease;
-        }
-
-        .results-link:hover {
-            background-color: #3f51b5;
-        }
+        /* Styling goes here */
     </style>
 </head>
-
 <body>
+    <h1>Group Voting App</h1>
 
-    <h1>Restaurant Voting</h1>
+    <button onclick="getLocation('restaurants')">Find Nearby Restaurants</button>
+    <button onclick="getLocation('events')">Find Nearby Events (Bowling, Bars, etc.)</button>
+    <button onclick="fetchMovies()">Find Current Movies</button>
 
-    <section>
-        <h2>Create Group</h2>
-        <form method="POST">
-            <input type="text" name="group_name" placeholder="Group Name" required>
-            <button type="submit" name="create_group">Create Group</button>
-        </form>
-    </section>
+    <div id="restaurant-list">
+        <h2>Nearby Restaurants</h2>
+        <!-- List items will be added here -->
+        <button onclick="manualAdd('restaurants')">Add Restaurant Manually</button>
+    </div>
 
-    <hr>
+    <div id="event-list">
+        <h2>Nearby Events</h2>
+        <!-- List items will be added here -->
+        <button onclick="manualAdd('events')">Add Event Manually</button>
+    </div>
 
-    {% if group_info %}
-    <section>
-        <h2>Group: {{ group_info.name }}</h2>
+    <div id="movie-list">
+        <h2>Current Movies</h2>
+        <!-- List items will be added here -->
+        <button onclick="manualAdd('movies')">Add Movie Manually</button>
+    </div>
 
-        <h3>Add Restaurants</h3>
-        <form method="POST">
-            <input type="hidden" name="group_id" value="{{ group_id }}">
-            <textarea name="restaurants" placeholder="Enter restaurants separated by commas" required></textarea>
-            <button type="submit" name="add_restaurants">Add Restaurants</button>
-        </form>
+    <script>
+        function getLocation(type) {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => fetchData(position, type));
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
 
-        <h3>Swipe Right or Left</h3>
-        <form method="POST">
-            <input type="hidden" name="group_id" value="{{ group_id }}">
-            {% for restaurant in group_info.restaurants %}
-            <div class="restaurant-card">
-                <h4>{{ restaurant }}</h4>
-                <div class="vote-buttons">
-                    <form method="POST">
-                        <input type="hidden" name="group_id" value="{{ group_id }}">
-                        <input type="hidden" name="restaurant" value="{{ restaurant }}">
-                        <input type="hidden" name="user_id" value="user_{{ loop.index }}">
-                        <button type="submit" name="vote" value="yes">Swipe Right (Like)</button>
-                    </form>
-                    <form method="POST">
-                        <input type="hidden" name="group_id" value="{{ group_id }}">
-                        <input type="hidden" name="restaurant" value="{{ restaurant }}">
-                        <input type="hidden" name="user_id" value="user_{{ loop.index }}">
-                        <button type="submit" name="vote" value="no">Swipe Left (Dislike)</button>
-                    </form>
-                </div>
-            </div>
-            {% endfor %}
-        </form>
+        function fetchData(position, type) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            
+            let url = '';
+            let data = { latitude: latitude, longitude: longitude };
+            if (type === 'restaurants') {
+                url = '/fetch_restaurants';
+            } else if (type === 'events') {
+                url = '/fetch_events';
+            }
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => displayResults(type, data))
+            .catch(error => console.error('Error fetching data:', error));
+        }
 
-        <h3>Results</h3>
-        <a href="{{ url_for('results', group_id=group_id) }}" class="results-link">See Results</a>
-    </section>
-    {% endif %}
+        function displayResults(type, data) {
+            const listDiv = type === 'restaurants' ? document.getElementById("restaurant-list") :
+                            type === 'events' ? document.getElementById("event-list") :
+                            document.getElementById("movie-list");
 
-    <section>
-        <h3>Existing Groups</h3>
-        <ul>
-            {% for group_id, group in groups.items() %}
-            <li><a href="{{ url_for('home', group_id=group_id) }}">{{ group.name }}</a></li>
-            {% endfor %}
-        </ul>
-    </section>
+            listDiv.innerHTML = "<h2>" + (type === 'restaurants' ? 'Nearby Restaurants' :
+                type === 'events' ? 'Nearby Events' : 'Current Movies') + "</h2>";
 
+            if (type === 'restaurants' || type === 'events') {
+                data.forEach(item => {
+                    const div = document.createElement("div");
+                    div.textContent = `${item.name} - ${item.vicinity || item.address || 'No address available'}`;
+                    listDiv.appendChild(div);
+                });
+            } else if (type === 'movies') {
+                data.forEach(movie => {
+                    const div = document.createElement("div");
+                    div.textContent = `${movie.title} - Release Date: ${movie.release_date}`;
+                    listDiv.appendChild(div);
+                });
+            }
+
+            // Add the "Manual Add" button at the end of each list
+            const addButton = document.createElement("button");
+            addButton.textContent = `Add ${type.charAt(0).toUpperCase() + type.slice(1)} Manually`;
+            addButton.onclick = () => manualAdd(type);
+            listDiv.appendChild(addButton);
+        }
+
+        function fetchMovies() {
+            fetch('/fetch_movies')
+            .then(response => response.json())
+            .then(data => displayResults('movies', data))
+            .catch(error => console.error('Error fetching movies:', error));
+        }
+
+        function manualAdd(type) {
+            const userInput = prompt(`Enter the name of the ${type.slice(0, -1)} to add:`);
+            if (userInput) {
+                const listDiv = type === 'restaurants' ? document.getElementById("restaurant-list") :
+                                type === 'events' ? document.getElementById("event-list") :
+                                document.getElementById("movie-list");
+
+                const div = document.createElement("div");
+                div.textContent = `${userInput} (Manually added)`;
+                listDiv.appendChild(div);
+            }
+        }
+    </script>
 </body>
-
 </html>
