@@ -17,19 +17,16 @@
 
     <div id="restaurant-list">
         <h2>Nearby Restaurants</h2>
-        <!-- List items will be added here -->
         <button onclick="manualAdd('restaurants')">Add Restaurant Manually</button>
     </div>
 
     <div id="event-list">
         <h2>Nearby Events</h2>
-        <!-- List items will be added here -->
         <button onclick="manualAdd('events')">Add Event Manually</button>
     </div>
 
     <div id="movie-list">
         <h2>Current Movies</h2>
-        <!-- List items will be added here -->
         <button onclick="manualAdd('movies')">Add Movie Manually</button>
     </div>
 
@@ -74,25 +71,53 @@
             listDiv.innerHTML = "<h2>" + (type === 'restaurants' ? 'Nearby Restaurants' :
                 type === 'events' ? 'Nearby Events' : 'Current Movies') + "</h2>";
 
-            if (type === 'restaurants' || type === 'events') {
-                data.forEach(item => {
-                    const div = document.createElement("div");
-                    div.textContent = `${item.name} - ${item.vicinity || item.address || 'No address available'}`;
-                    listDiv.appendChild(div);
-                });
-            } else if (type === 'movies') {
-                data.forEach(movie => {
-                    const div = document.createElement("div");
-                    div.textContent = `${movie.title} - Release Date: ${movie.release_date}`;
-                    listDiv.appendChild(div);
-                });
-            }
+            data.forEach(item => addVoteableItem(item.name, item.vicinity || item.address || 'No address available', type, listDiv));
+        }
 
-            // Add the "Manual Add" button at the end of each list
-            const addButton = document.createElement("button");
-            addButton.textContent = `Add ${type.charAt(0).toUpperCase() + type.slice(1)} Manually`;
-            addButton.onclick = () => manualAdd(type);
-            listDiv.appendChild(addButton);
+        function addVoteableItem(name, address, type, listDiv) {
+            const div = document.createElement("div");
+            div.textContent = `${name} - ${address}`;
+
+            const yesButton = document.createElement("button");
+            yesButton.textContent = "Yes";
+            yesButton.onclick = () => castVote(name, 'yes', type);
+
+            const noButton = document.createElement("button");
+            noButton.textContent = "No";
+            noButton.onclick = () => castVote(name, 'no', type);
+
+            div.appendChild(yesButton);
+            div.appendChild(noButton);
+            listDiv.appendChild(div);
+        }
+
+        function castVote(itemName, vote, type) {
+            fetch('/cast_vote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ item: itemName, vote: vote, type: type })
+            })
+            .then(response => response.json())
+            .then(data => updateLeader(type, data.leader))
+            .catch(error => console.error('Error casting vote:', error));
+        }
+
+        function updateLeader(type, leader) {
+            const listDiv = type === 'restaurants' ? document.getElementById("restaurant-list") :
+                            type === 'events' ? document.getElementById("event-list") :
+                            document.getElementById("movie-list");
+
+            const leaderDiv = document.getElementById(`${type}-leader`);
+            if (!leaderDiv) {
+                const newLeaderDiv = document.createElement("div");
+                newLeaderDiv.id = `${type}-leader`;
+                newLeaderDiv.textContent = `Leading ${type.slice(0, -1)}: ${leader.name} with ${leader.votes} votes`;
+                listDiv.appendChild(newLeaderDiv);
+            } else {
+                leaderDiv.textContent = `Leading ${type.slice(0, -1)}: ${leader.name} with ${leader.votes} votes`;
+            }
         }
 
         function fetchMovies() {
@@ -109,9 +134,7 @@
                                 type === 'events' ? document.getElementById("event-list") :
                                 document.getElementById("movie-list");
 
-                const div = document.createElement("div");
-                div.textContent = `${userInput} (Manually added)`;
-                listDiv.appendChild(div);
+                addVoteableItem(`${userInput} (Manually added)`, 'No address available', type, listDiv);
             }
         }
     </script>
