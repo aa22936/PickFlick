@@ -12,6 +12,13 @@ GOOGLE_PLACES_API_KEY = 'AIzaSyAnF6iacl7OEzOwJ8N95Njqoo0HeBASWZ4'
 # TMDb API key
 TMDB_API_KEY = '7673312aa2872a431795a2ae7752a85d'
 
+# Structure to store vote counts for each item type
+votes = {
+    'restaurants': {},
+    'events': {},
+    'movies': {}
+}
+
 # Function to get nearby restaurants
 def get_restaurants(latitude, longitude):
     url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
@@ -118,6 +125,29 @@ def results(group_id):
 
     return render_template('results.html', groups=groups, results=results, group_id=group_id)
 
+# Voting endpoint to handle Yes/No votes and track leaders
+@app.route('/cast_vote', methods=['POST'])
+def cast_vote():
+    data = request.json
+    item_name = data['item']
+    vote = data['vote']
+    item_type = data['type']
+
+    # Initialize vote count if item doesn't exist yet
+    if item_name not in votes[item_type]:
+        votes[item_type][item_name] = 0
+
+    # Adjust vote count based on Yes or No vote
+    if vote == 'yes':
+        votes[item_type][item_name] += 1
+    elif vote == 'no':
+        votes[item_type][item_name] -= 1
+
+    # Find the current leader
+    leader_name, leader_votes = max(votes[item_type].items(), key=lambda x: x[1], default=(None, 0))
+    leader = {'name': leader_name, 'votes': leader_votes}
+
+    return jsonify({'status': 'success', 'leader': leader})
 
 if __name__ == '__main__':
     app.run(debug=True)
