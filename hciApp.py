@@ -40,30 +40,7 @@ def get_restaurants(latitude, longitude):
     response = requests.get(url, params=params)
     return response.json().get('results', [])
 
-# Function to get nearby events
-def get_events(latitude, longitude):
-    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
-    params = {
-        "location": f"{latitude},{longitude}",
-        "radius": 5000,
-        "type": "establishment",
-        "key": GOOGLE_PLACES_API_KEY
-    }
-    response = requests.get(url, params=params)
-    return response.json().get('results', [])
-
-# Function to get current movies from TMDb
-def get_current_movies():
-    url = f"https://api.themoviedb.org/3/movie/now_playing"
-    params = {
-        "api_key": TMDB_API_KEY,
-        "language": "en-US",
-        "page": 1
-    }
-    response = requests.get(url, params=params)
-    return response.json().get('results', [])
-
-# Endpoint to fetch restaurants and broadcast to all clients
+# Endpoint to fetch restaurants and broadcast if requested by leader (127.0.0.1)
 @app.route('/fetch_restaurants', methods=['POST'])
 def fetch_restaurants():
     latitude = request.json.get('latitude')
@@ -73,8 +50,10 @@ def fetch_restaurants():
     global shared_restaurants
     shared_restaurants = get_restaurants(latitude, longitude)
     
-    # Broadcast restaurant data to all connected clients
-    socketio.emit('restaurant_update', {'restaurants': shared_restaurants})
+    # Check if the request came from the leader (localhost)
+    if request.remote_addr == '127.0.0.1':
+        # Broadcast restaurant data to all connected clients
+        socketio.emit('restaurant_update', {'restaurants': shared_restaurants})
     
     return jsonify(shared_restaurants)
 
