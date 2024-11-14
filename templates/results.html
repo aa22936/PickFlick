@@ -3,26 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voting Results</title>
+    <title>PickFlick Results</title>
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #e0f7fa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            color: #00796b;
+            font-size: 2em;
+            text-align: center;
+        }
+
+        .celebration {
+            color: #388e3c;
+            font-size: 1.5em;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Results for Group: {{ groups[group_id].name }}</h1>
+    <h1>And the Winner is...</h1>
+    <div id="winner" class="celebration"></div>
 
-    <h3>Restaurant Voting Results</h3>
-    <ul>
-        {% for restaurant, result in results.items() %}
-            <li>
-                <strong>{{ restaurant }}:</strong> 
-                {% if result == "Selected" %}
-                    <span style="color: green;">{{ result }}</span>
-                {% else %}
-                    <span>{{ result }}</span>
-                {% endif %}
-            </li>
-        {% endfor %}
-    </ul>
-
-    <hr>
-    <a href="{{ url_for('home', group_id=group_id) }}">Back to Group</a>
+    <script>
+        // Display the winning option (assumes 'leader' data is stored)
+        const leader = JSON.parse(localStorage.getItem('leader'));
+        document.getElementById('winner').textContent = leader
+            ? `${leader.name} with ${leader.votes} votes! 🎉`
+            : "No winning option.";
+        
+        // Optional confetti effect (if you'd like to add)
+    </script>
 </body>
 </html>
