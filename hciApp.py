@@ -17,6 +17,7 @@ votes = {
     'movies': {}
 }
 shared_restaurants = []  # Shared storage for restaurant data
+leader_client_id = 'leader_id'  # Replace with an actual identifier for the leader
 
 # Route to serve the Intro Page
 @app.route("/")
@@ -40,19 +41,18 @@ def get_restaurants(latitude, longitude):
     response = requests.get(url, params=params)
     return response.json().get('results', [])
 
-# Endpoint to fetch restaurants and broadcast if requested by leader (127.0.0.1)
+# Endpoint to fetch restaurants and broadcast if leader fetches
 @app.route('/fetch_restaurants', methods=['POST'])
 def fetch_restaurants():
+    client_id = request.json.get('client_id')  # Identifier for the client making the request
     latitude = request.json.get('latitude')
     longitude = request.json.get('longitude')
     
-    # Fetch restaurants based on location
     global shared_restaurants
     shared_restaurants = get_restaurants(latitude, longitude)
     
-    # Check if the request came from the leader (localhost)
-    if request.remote_addr == '127.0.0.1':
-        # Broadcast restaurant data to all connected clients
+    # Only broadcast if the leader fetched restaurants
+    if client_id == leader_client_id:
         socketio.emit('restaurant_update', {'restaurants': shared_restaurants})
     
     return jsonify(shared_restaurants)
