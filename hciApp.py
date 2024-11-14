@@ -1,7 +1,10 @@
 from flask import Flask, render_template, request, jsonify
+from flask_socketio import SocketIO, emit
 import requests
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your_secret_key'
+socketio = SocketIO(app)
 
 # API keys
 GOOGLE_PLACES_API_KEY = 'AIzaSyAnF6iacl7OEzOwJ8N95Njqoo0HeBASWZ4'
@@ -103,7 +106,10 @@ def cast_vote():
     leader_name, leader_votes = max(votes[item_type].items(), key=lambda x: x[1], default=(None, 0))
     leader = {'name': leader_name, 'votes': leader_votes}
 
+    # Emit real-time leaderboard update to all clients
+    socketio.emit('vote_update', {'type': item_type, 'leader': leader})
+
     return jsonify({'status': 'success', 'leader': leader})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)

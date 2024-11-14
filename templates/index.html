@@ -75,11 +75,16 @@
             align-items: center;
         }
 
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin-left: auto; /* Ensures buttons stay to the right */
+        }
+
         .list-item button {
             width: 40px;
             height: 40px;
             font-size: 0.9em;
-            margin: 0 5px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -165,6 +170,9 @@
             div.className = "list-item";
             div.textContent = `${name} - ${address}`;
 
+            const buttonContainer = document.createElement("div");
+            buttonContainer.className = "button-container";
+
             const yesButton = document.createElement("button");
             yesButton.textContent = "Yes";
             yesButton.onclick = () => castVote(name, 'yes', type);
@@ -173,8 +181,10 @@
             noButton.textContent = "No";
             noButton.onclick = () => castVote(name, 'no', type);
 
-            div.appendChild(yesButton);
-            div.appendChild(noButton);
+            buttonContainer.appendChild(yesButton);
+            buttonContainer.appendChild(noButton);
+
+            div.appendChild(buttonContainer);
             listDiv.appendChild(div);
         }
 
@@ -224,5 +234,30 @@
             }
         }
     </script>
+
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <script>
+        // Initialize SocketIO client
+        var socket = io();
+    
+        // Listen for vote updates
+        socket.on('vote_update', function(data) {
+            const { type, leader } = data;
+    
+            // Update the leader info for the specific type (restaurants, events, or movies)
+            const leaderDiv = document.getElementById(`${type}-leader`);
+            if (leaderDiv) {
+                leaderDiv.textContent = `Leading ${type.slice(0, -1)}: ${leader.name} with ${leader.votes} votes`;
+            }
+        });
+    </script>
+    
+
+
+
+
+
 </body>
 </html>
