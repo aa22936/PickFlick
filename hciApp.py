@@ -10,12 +10,13 @@ socketio = SocketIO(app)
 GOOGLE_PLACES_API_KEY = 'AIzaSyAnF6iacl7OEzOwJ8N95Njqoo0HeBASWZ4'
 TMDB_API_KEY = '7673312aa2872a431795a2ae7752a85d'
 
-# In-memory storage for votes
+# In-memory storage for votes and shared restaurant data
 votes = {
     'restaurants': {},
     'events': {},
     'movies': {}
 }
+shared_restaurants = []  # Shared storage for restaurant data
 
 # Route to serve the Intro Page
 @app.route("/")
@@ -62,13 +63,20 @@ def get_current_movies():
     response = requests.get(url, params=params)
     return response.json().get('results', [])
 
-# Endpoint to fetch restaurants
+# Endpoint to fetch restaurants and broadcast to all clients
 @app.route('/fetch_restaurants', methods=['POST'])
 def fetch_restaurants():
     latitude = request.json.get('latitude')
     longitude = request.json.get('longitude')
-    restaurants = get_restaurants(latitude, longitude)
-    return jsonify(restaurants)
+    
+    # Fetch restaurants based on location
+    global shared_restaurants
+    shared_restaurants = get_restaurants(latitude, longitude)
+    
+    # Broadcast restaurant data to all connected clients
+    socketio.emit('restaurant_update', {'restaurants': shared_restaurants})
+    
+    return jsonify(shared_restaurants)
 
 # Endpoint to fetch events
 @app.route('/fetch_events', methods=['POST'])
@@ -112,4 +120,4 @@ def cast_vote():
     return jsonify({'status': 'success', 'leader': leader})
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, host='0.0.0.0', port=8080, debug=True)
