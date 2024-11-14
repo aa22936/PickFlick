@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PickFlick - Welcome</title>
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .intro-container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            color: #00796b;
+            font-size: 2.5em;
+        }
+        p {
+            color: #37474f;
+            font-size: 1.1em;
+        }
+        input {
+            padding: 12px;
+            width: 80%;
+            font-size: 1em;
+            border: 1px solid #b2ebf2;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        button {
+            margin-top: 20px;
+            background: linear-gradient(135deg, #00796b, #004d40);
+            color: white;
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: linear-gradient(135deg, #004d40, #00796b);
+        }
+    </style>
+</head>
+<body>
+    <div class="intro-container">
+        <h1>Welcome to PickFlick!</h1>
+        <p>PickFlick helps groups make decisions by allowing everyone to vote on options for places to eat, activities, or movies. Enter the number of people voting to get started.</p>
+        <input type="number" id="voterCount" placeholder="Number of Voters" min="1" required>
+        <button onclick="startVoting()">Start Voting</button>
+    </div>
+
+    <script>
+        function startVoting() {
+            const voterCount = document.getElementById('voterCount').value;
+            if (voterCount > 0) {
+                localStorage.setItem('voterCount', voterCount); // Store the count
+                localStorage.setItem('votesCast', 0); // Initialize vote count
+                window.location.href = '/index'; // Redirect to the voting page
+            } else {
+                alert('Please enter a valid number of voters.');
+            }
+        }
+    </script>
+</body>
+</html>
