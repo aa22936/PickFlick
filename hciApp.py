@@ -46,7 +46,7 @@ def get_restaurants(latitude, longitude):
         print(f"Error fetching restaurants: {e}")
         return {"error": "Failed to fetch restaurants"}
 
-# Function to get events (basic implementation)
+# Function to get events
 def get_events(latitude, longitude):
     url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     params = {
@@ -76,27 +76,31 @@ def get_current_movies():
         response = requests.get(url, params=params)
         response.raise_for_status()
         data = response.json()
-        print("TMDb API Response:", data)  # Debugging output
+        print("TMDb API Response:", data)
         return data.get('results', [])
     except requests.exceptions.RequestException as e:
         print(f"Error fetching movies: {e}")
         return {"error": "Failed to fetch movies"}
 
-# Endpoint to fetch restaurants and broadcast if leader fetches
+# Endpoint to fetch restaurants
 @app.route('/fetch_restaurants', methods=['POST'])
 def fetch_restaurants():
-    client_id = request.json.get('client_id')  # Identifier for the client making the request
+    client_id = request.json.get('client_id')
     latitude = request.json.get('latitude')
     longitude = request.json.get('longitude')
-    
+
     global shared_restaurants
     shared_restaurants = get_restaurants(latitude, longitude)
-    
-    # Only broadcast if the leader fetched restaurants
+
+    # Populate votes dictionary
+    for restaurant in shared_restaurants:
+        votes['restaurants'][restaurant['name']] = 0
+
     if client_id == leader_client_id:
         socketio.emit('restaurant_update', {'restaurants': shared_restaurants})
-    
+
     return jsonify(shared_restaurants)
+
 
 # Endpoint to fetch events
 @app.route('/fetch_events', methods=['POST'])
@@ -104,44 +108,53 @@ def fetch_events():
     latitude = request.json.get('latitude')
     longitude = request.json.get('longitude')
     events = get_events(latitude, longitude)
-    if isinstance(events, dict) and 'error' in events:
-        return jsonify({"error": events['error']})
+
+    # Populate the votes dictionary
+    for event in events:
+        if event['name'] not in votes['events']:
+            votes['events'][event['name']] = 0
+
+    print(f"Populated events in votes: {votes['events']}")  # Debugging
     return jsonify(events)
+
+
 
 # Endpoint to fetch movies
 @app.route('/fetch_movies', methods=['GET'])
 def fetch_movies():
     movies = get_current_movies()
-    if isinstance(movies, dict) and 'error' in movies:
-        return jsonify({"error": movies['error']})
+
+    # Populate votes dictionary with normalized keys
+    for movie in movies:
+        normalized_name = movie['title'].strip().lower()
+        if normalized_name not in votes['movies']:
+            votes['movies'][normalized_name] = 0
+
+    print(f"Populated movies in votes: {votes['movies']}")  # Debugging
     return jsonify(movies)
 
-# Endpoint to handle voting
-@app.route('/cast_vote', methods=['POST'])
-def cast_vote():
+
+# Endpoint to handle item deletion
+@app.route('/delete_item', methods=['POST'])
+def delete_item():
     data = request.json
-    item_name = data['item']
-    vote = data['vote']
+    item_name = data['item'].strip().lower()  # Normalize input
     item_type = data['type']
 
-    # Initialize vote count if item doesn't exist yet
-    if item_name not in votes[item_type]:
-        votes[item_type][item_name] = 0
+    print(f"Attempting to delete normalized item: {item_name} of type: {item_type}")  # Debugging
+    normalized_votes = {k.strip().lower(): k for k in votes.get(item_type, {})}  # Normalize stored keys
 
-    # Adjust vote count based on Yes or No vote
-    if vote == 'yes':
-        votes[item_type][item_name] += 1
-    elif vote == 'no':
-        votes[item_type][item_name] -= 1
+    if item_name in normalized_votes:
+        original_name = normalized_votes[item_name]  # Find the original key
+        del votes[item_type][original_name]
+        print(f"Deleted item: {original_name} from type: {item_type}")  # Debugging
+        return jsonify({'status': 'success'})
+    else:
+        print(f"Item {item_name} not found in type: {item_type}")  # Debugging
+        return jsonify({'status': 'error', 'error': 'Item not found'})
 
-    # Find the current leader
-    leader_name, leader_votes = max(votes[item_type].items(), key=lambda x: x[1], default=(None, 0))
-    leader = {'name': leader_name, 'votes': leader_votes}
 
-    # Emit real-time leaderboard update to all clients
-    socketio.emit('vote_update', {'type': item_type, 'leader': leader})
 
-    return jsonify({'status': 'success', 'leader': leader})
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=8080, debug=True)
