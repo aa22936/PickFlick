@@ -85,6 +85,12 @@
             align-items: center;
         }
 
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin-left: auto; /* Ensures buttons stay to the right */
+        }
+
         /* Leader section */
         .leader-info {
             font-weight: bold;
@@ -165,6 +171,10 @@
             div.className = "list-item";
             div.textContent = `${name} - ${address}`;
 
+
+            const buttonContainer = document.createElement("div");
+            buttonContainer.className = "button-container";
+
             const yesButton = document.createElement("button");
             yesButton.textContent = "Yes";
             yesButton.onclick = () => castVote(name, 'yes', type);
@@ -173,8 +183,11 @@
             noButton.textContent = "No";
             noButton.onclick = () => castVote(name, 'no', type);
 
-            div.appendChild(yesButton);
-            div.appendChild(noButton);
+            buttonContainer.appendChild(yesButton);
+            buttonContainer.appendChild(noButton);
+
+            div.appendChild(buttonContainer);
+
             listDiv.appendChild(div);
         }
 
