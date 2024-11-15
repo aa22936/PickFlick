@@ -57,6 +57,40 @@ def fetch_restaurants():
     
     return jsonify(shared_restaurants)
 
+
+def get_events(latitude, longitude):
+    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+    params = {
+        "location": f"{latitude},{longitude}",
+        "radius": 5000,
+        "type": "point_of_interest",  # This can bring up event-related locations
+        "keyword": "event venue",  # Searches for venues commonly used for events
+        "key": GOOGLE_PLACES_API_KEY
+    }
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        return response.json().get('results', [])
+    else:
+        return {"error": "Failed to fetch events"}
+
+
+# Function to get current movies from TMDb
+def get_current_movies():
+    url = f"https://api.themoviedb.org/3/movie/now_playing"
+    params = {
+        "api_key": TMDB_API_KEY,
+        "language": "en-US",
+        "page": 1
+    }
+    response = requests.get(url, params=params)
+    return response.json().get('results', [])
+
+# Endpoint to fetch restaurants and broadcast to all clients
+
+
+
+
+
 # Endpoint to fetch events
 @app.route('/fetch_events', methods=['POST'])
 def fetch_events():
