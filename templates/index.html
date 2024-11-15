@@ -75,14 +75,10 @@
             align-items: center;
         }
 
-        .list-item button {
-            width: 40px;
-            height: 40px;
-            font-size: 0.9em;
-            margin: 0 5px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .list-item img {
+            max-width: 80px;
+            border-radius: 8px;
+            margin-right: 10px;
         }
 
         .button-container {
@@ -119,7 +115,6 @@
 
     <div class="list-container" id="movie-list">
         <h2>Current Movies</h2>
-        <button onclick="manualAdd('movies')">Add Movie Manually</button>
     </div>
 
     <script>
@@ -134,7 +129,7 @@
         function fetchData(position, type) {
             const latitude = position.coords.latitude;
             const longitude = position.coords.longitude;
-            
+
             let url = '';
             let data = { latitude: latitude, longitude: longitude };
             if (type === 'restaurants') {
@@ -142,7 +137,7 @@
             } else if (type === 'events') {
                 url = '/fetch_events';
             }
-            
+
             fetch(url, {
                 method: 'POST',
                 headers: {
@@ -171,7 +166,6 @@
             div.className = "list-item";
             div.textContent = `${name} - ${address}`;
 
-
             const buttonContainer = document.createElement("div");
             buttonContainer.className = "button-container";
 
@@ -191,6 +185,58 @@
             listDiv.appendChild(div);
         }
 
+        function fetchMovies() {
+            fetch('/fetch_movies')
+                .then(response => response.json())
+                .then(data => displayMovies(data))
+                .catch(error => console.error('Error fetching movies:', error));
+        }
+
+        function displayMovies(movies) {
+            const movieListDiv = document.getElementById("movie-list");
+            movieListDiv.innerHTML = "<h2>Current Movies</h2>";
+
+            if (!movies || movies.length === 0) {
+                movieListDiv.innerHTML += "<p>No movies are currently playing.</p>";
+                return;
+            }
+
+            movies.forEach(movie => {
+                const movieDiv = document.createElement("div");
+                movieDiv.className = "list-item";
+
+                const movieContent = `
+                    <div style="display: flex; align-items: center;">
+                        <img src="https://image.tmdb.org/t/p/w200${movie.poster_path}" alt="${movie.title}" 
+                             style="border-radius: 8px; margin-right: 10px;">
+                        <div>
+                            <h3>${movie.title}</h3>
+                            <p>${movie.overview || "No description available."}</p>
+                            <p><strong>Rating:</strong> ${movie.vote_average} / 10</p>
+                        </div>
+                    </div>
+                `;
+                movieDiv.innerHTML = movieContent;
+
+                const buttonContainer = document.createElement("div");
+                buttonContainer.className = "button-container";
+
+                const yesButton = document.createElement("button");
+                yesButton.textContent = "Yes";
+                yesButton.onclick = () => castVote(movie.title, 'yes', 'movies');
+
+                const noButton = document.createElement("button");
+                noButton.textContent = "No";
+                noButton.onclick = () => castVote(movie.title, 'no', 'movies');
+
+                buttonContainer.appendChild(yesButton);
+                buttonContainer.appendChild(noButton);
+                movieDiv.appendChild(buttonContainer);
+
+                movieListDiv.appendChild(movieDiv);
+            });
+        }
+
         function castVote(itemName, vote, type) {
             fetch('/cast_vote', {
                 method: 'POST',
@@ -202,39 +248,6 @@
             .then(response => response.json())
             .then(data => updateLeader(type, data.leader))
             .catch(error => console.error('Error casting vote:', error));
-        }
-
-        function updateLeader(type, leader) {
-            const listDiv = type === 'restaurants' ? document.getElementById("restaurant-list") :
-                            type === 'events' ? document.getElementById("event-list") :
-                            document.getElementById("movie-list");
-
-            let leaderDiv = document.getElementById(`${type}-leader`);
-            if (!leaderDiv) {
-                leaderDiv = document.createElement("div");
-                leaderDiv.id = `${type}-leader`;
-                leaderDiv.className = "leader-info";
-                listDiv.appendChild(leaderDiv);
-            }
-            leaderDiv.textContent = `Leading ${type.slice(0, -1)}: ${leader.name} with ${leader.votes} votes`;
-        }
-
-        function fetchMovies() {
-            fetch('/fetch_movies')
-            .then(response => response.json())
-            .then(data => displayResults('movies', data))
-            .catch(error => console.error('Error fetching movies:', error));
-        }
-
-        function manualAdd(type) {
-            const userInput = prompt(`Enter the name of the ${type.slice(0, -1)} to add:`);
-            if (userInput) {
-                const listDiv = type === 'restaurants' ? document.getElementById("restaurant-list") :
-                                type === 'events' ? document.getElementById("event-list") :
-                                document.getElementById("movie-list");
-
-                addVoteableItem(`${userInput} (Manually added)`, 'No address available', type, listDiv);
-            }
         }
     </script>
 </body>
