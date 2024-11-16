@@ -16,14 +16,12 @@
             min-height: 100vh;
             margin: 0;
         }
-
         h1 {
             color: #00796b;
             font-size: 2.5em;
             margin: 20px 0;
             text-shadow: 1px 1px #004d40;
         }
-
         .list-container {
             background-color: #ffffff;
             border-radius: 15px;
@@ -34,22 +32,22 @@
             max-width: 600px;
             text-align: left;
         }
-
         .list-item {
-            background-color: #e0f2f1;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #b2ebf2;
+            border-radius: 8px;
         }
-
         .button-container {
             display: flex;
+            flex-direction: row;
+            justify-content: space-between;
             gap: 10px;
+            margin-top: 20px;
         }
-
         button {
             background-color: #00796b;
             color: #ffffff;
@@ -57,162 +55,153 @@
             padding: 10px 20px;
             font-size: 1em;
             border-radius: 20px;
-            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
             cursor: pointer;
-            margin: 10px 0;
             transition: background-color 0.3s ease;
         }
-
         button:hover {
             background-color: #004d40;
+        }
+        input {
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #b2ebf2;
+            border-radius: 8px;
+            width: calc(100% - 20px);
         }
     </style>
 </head>
 <body>
     <h1>PickFlick Voting</h1>
-
-    <button onclick="getLocation('restaurants')">Find Nearby Restaurants</button>
-    <button onclick="getLocation('events')">Find Nearby Events</button>
-    <button onclick="fetchMovies()">Find Current Movies</button>
-
-    <div class="list-container" id="restaurant-list">
-        <h2>Nearby Restaurants</h2>
+    <div class="button-container">
+        <button onclick="loadOptions('restaurants')">Find Restaurants</button>
+        <button onclick="loadOptions('events')">Find Events</button>
+        <button onclick="loadOptions('movies')">Find Movies</button>
     </div>
 
-    <div class="list-container" id="event-list">
-        <h2>Nearby Events</h2>
+    <div class="list-container">
+        <h2 id="current-category">Options</h2>
+        <div id="options-list"></div>
+        <div>
+            <input type="text" id="new-option" placeholder="Add a new option">
+            <button onclick="addOption()">Add to List</button>
+        </div>
     </div>
 
-    <div class="list-container" id="movie-list">
-        <h2>Current Movies</h2>
-    </div>
+    <button onclick="finalizeVotes()">Finalize Voting</button>
 
     <script>
-        function getLocation(type) {
+        let options = [];
+        let currentCategory = '';
+        let userLatitude = null;
+        let userLongitude = null;
+
+        // Get the user's location
+        function getUserLocation(callback) {
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => fetchData(position, type));
+                navigator.geolocation.getCurrentPosition((position) => {
+                    userLatitude = position.coords.latitude;
+                    userLongitude = position.coords.longitude;
+                    callback();
+                }, (error) => {
+                    alert('Unable to fetch location. Using default coordinates.');
+                    userLatitude = 33.7490; // Default latitude
+                    userLongitude = -84.3880; // Default longitude
+                    callback();
+                });
             } else {
-                alert("Geolocation is not supported by this browser.");
+                alert('Geolocation is not supported by this browser.');
+                userLatitude = 33.7490;
+                userLongitude = -84.3880;
+                callback();
             }
         }
 
-        function fetchData(position, type) {
-            const latitude = position.coords.latitude;
-            const longitude = position.coords.longitude;
+        function loadOptions(category) {
+            currentCategory = category;
+            document.getElementById('current-category').textContent = `Options for ${capitalize(category)}`;
+            options = []; // Reset options
+            getUserLocation(() => fetchAPIOptions(category));
+        }
 
-            let url = type === 'restaurants' ? '/fetch_restaurants' : '/fetch_events';
-            let data = { latitude, longitude };
+        function fetchAPIOptions(category) {
+            const apiUrl = {
+                restaurants: '/fetch_restaurants',
+                events: '/fetch_events',
+                movies: '/fetch_movies',
+            }[category];
 
-            fetch(url, {
-                method: 'POST',
+            const data = category === 'movies' ? null : JSON.stringify({
+                latitude: userLatitude,
+                longitude: userLongitude
+            });
+
+            fetch(apiUrl, {
+                method: category === 'movies' ? 'GET' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: data,
             })
-            .then(response => response.json())
-            .then(data => displayResults(type, data))
-            .catch(error => console.error('Error fetching data:', error));
+                .then((response) => response.json())
+                .then((data) => {
+                    data.forEach((item) => {
+                        const name = category === 'movies' ? item.title : item.name;
+                        options.push({ name, votes: 0 });
+                    });
+                    renderOptions();
+                })
+                .catch((error) => console.error(`Error fetching ${category}:`, error));
         }
 
-        function fetchMovies() {
-            fetch('/fetch_movies')
-                .then(response => response.json())
-                .then(data => displayMovies(data))
-                .catch(error => console.error('Error fetching movies:', error));
-        }
-
-        function displayMovies(movies) {
-            const movieListDiv = document.getElementById("movie-list");
-            movieListDiv.innerHTML = "<h2>Current Movies</h2>";
-
-            if (!movies || movies.length === 0) {
-                movieListDiv.innerHTML += "<p>No movies are currently playing.</p>";
-                return;
+        function addOption() {
+            const input = document.getElementById('new-option');
+            const name = input.value.trim();
+            if (name) {
+                options.push({ name, votes: 0 });
+                input.value = '';
+                renderOptions();
             }
+        }
 
-            movies.forEach(movie => {
-                const name = movie.title;
-                const description = movie.overview || "No description available.";
-                const imageUrl = `https://image.tmdb.org/t/p/w200${movie.poster_path}`;
-
-                // Use addItemToList to add movies with delete buttons
-                addItemToList(name, description, 'movies', movieListDiv, imageUrl);
+        function renderOptions() {
+            const optionsList = document.getElementById('options-list');
+            optionsList.innerHTML = '';
+            options.forEach((option, index) => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `
+                    <span>${option.name} - Votes: ${option.votes}</span>
+                    <div class="button-container">
+                        <button onclick="vote(${index})">Vote</button>
+                        <button onclick="deleteOption(${index})">Delete</button>
+                    </div>
+                `;
+                optionsList.appendChild(div);
             });
         }
 
-        function displayResults(type, data) {
-            const listDiv = type === 'restaurants'
-                ? document.getElementById("restaurant-list")
-                : document.getElementById("event-list");
-
-            listDiv.innerHTML = `<h2>${type === 'restaurants' ? 'Nearby Restaurants' : 'Nearby Events'}</h2>`;
-            data.forEach(item => addVoteableItem(item.name, item.vicinity || item.address || 'No address available', type, listDiv));
+        function vote(index) {
+            options[index].votes++;
+            renderOptions();
         }
 
-        function addItemToList(name, description, type, listDiv, imageUrl = null) {
-            const div = document.createElement("div");
-            div.className = "list-item";
+        function deleteOption(index) {
+            options.splice(index, 1);
+            renderOptions();
+        }
 
-            let content = `<div>${name} - ${description}</div>`;
-            if (imageUrl) {
-                content = `
-                    <div style="display: flex; align-items: center;">
-                        <img src="${imageUrl}" alt="${name}" style="border-radius: 8px; margin-right: 10px; max-width: 80px;">
-                        <div>
-                            <h3>${name}</h3>
-                            <p>${description}</p>
-                        </div>
-                    </div>`;
+        function finalizeVotes() {
+            if (options.length === 0) {
+                alert('No options available to finalize!');
+                return;
             }
-            div.innerHTML = content;
-
-            const buttonContainer = document.createElement("div");
-            buttonContainer.className = "button-container";
-
-            const deleteButton = document.createElement("button");
-            deleteButton.textContent = "Delete";
-            deleteButton.onclick = () => deleteItem(name, type, div);
-
-            buttonContainer.appendChild(deleteButton);
-            div.appendChild(buttonContainer);
-            listDiv.appendChild(div);
+            const leader = options.reduce((max, option) => (option.votes > max.votes ? option : max), options[0]);
+            localStorage.setItem('leader', JSON.stringify(leader)); // Save the leader to localStorage
+            window.location.href = '/results'; // Redirect to results page
         }
 
-        function addVoteableItem(name, address, type, listDiv) {
-            const div = document.createElement("div");
-            div.className = "list-item";
-            div.textContent = `${name} - ${address}`;
-
-            const buttonContainer = document.createElement("div");
-            buttonContainer.className = "button-container";
-
-            const deleteButton = document.createElement("button");
-            deleteButton.textContent = "Delete";
-            deleteButton.onclick = () => deleteItem(name, type, div);
-
-            buttonContainer.appendChild(deleteButton);
-            div.appendChild(buttonContainer);
-            listDiv.appendChild(div);
-        }
-
-        function deleteItem(itemName, type, itemElement) {
-            console.log(`Deleting item: ${itemName} of type: ${type}`);
-
-            fetch('/delete_item', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ item: itemName, type: type })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    console.log(`Successfully deleted: ${itemName}`);
-                    itemElement.remove(); // Remove the item from the UI
-                } else {
-                    console.error(`Failed to delete item: ${data.error}`);
-                }
-            })
-            .catch(error => console.error('Error deleting item:', error));
+        function capitalize(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
         }
     </script>
 </body>
 </html>
+
