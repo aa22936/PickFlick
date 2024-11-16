@@ -14,34 +14,81 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
+            overflow: hidden;
+            position: relative;
         }
-
         h1 {
             color: #00796b;
-            font-size: 2em;
+            font-size: 2.5em;
             text-align: center;
         }
-
-        .celebration {
+        #winner {
             color: #388e3c;
             font-size: 1.5em;
             text-align: center;
             margin-top: 20px;
         }
+        button {
+            margin-top: 30px;
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #00796b;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #004d40;
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #ff4081;
+            animation: fall 5s infinite;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-100vh) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(720deg); }
+        }
     </style>
 </head>
 <body>
     <h1>And the Winner is...</h1>
-    <div id="winner" class="celebration"></div>
+    <div id="winner"></div>
+    <button onclick="tryAgain()">Try Again</button>
 
     <script>
-        // Display the winning option (assumes 'leader' data is stored)
         const leader = JSON.parse(localStorage.getItem('leader'));
         document.getElementById('winner').textContent = leader
             ? `${leader.name} with ${leader.votes} votes! 🎉`
             : "No winning option.";
-        
-        // Optional confetti effect (if you'd like to add)
+
+        function createConfetti() {
+            for (let i = 0; i < 150; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = getRandomColor();
+                confetti.style.animationDelay = Math.random() * 5 + 's';
+                confetti.style.animationDuration = Math.random() * 2 + 3 + 's';
+                document.body.appendChild(confetti);
+            }
+        }
+
+        function getRandomColor() {
+            const colors = ['#ff4081', '#3f51b5', '#4caf50', '#ff9800', '#9c27b0'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        createConfetti();
+
+        function tryAgain() {
+            localStorage.clear();
+            window.location.href = '/';
+        }
     </script>
 </body>
 </html>
