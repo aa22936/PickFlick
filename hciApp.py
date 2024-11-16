@@ -1,54 +1,58 @@
-from flask import Flask, render_template, request, jsonify
-from flask_socketio import SocketIO, emit
+from flask import Flask, request, jsonify, render_template
+import os
 import requests
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = '1234'
-socketio = SocketIO(app)
 
-# API keys
-GOOGLE_PLACES_API_KEY = 'AIzaSyAnF6iacl7OEzOwJ8N95Njqoo0HeBASWZ4'
-TMDB_API_KEY = '7673312aa2872a431795a2ae7752a85d'
+# API keys extracted from your file
+GOOGLE_PLACES_API_KEY = "AIzaSyAnF6iacl7OEzOwJ8N95Njqoo0HeBASWZ4"
+TMDB_API_KEY = "7673312aa2872a431795a2ae7752a85d"
 
-# In-memory storage for votes and shared restaurant data
-votes = {
-    'restaurants': {},
-    'events': {},
-    'movies': {}
-}
-shared_restaurants = []  # Shared storage for restaurant data
-leader_client_id = 'leader_id'  # Replace with an actual identifier for the leader
+# Routes to serve the HTML files
+@app.route('/')
+def serve_intro():
+    return render_template('intro.html')  # Serve intro.html from templates
 
-# Route to serve the Intro Page
-@app.route("/")
-def intro():
-    return render_template("intro.html")
+@app.route('/index')
+def serve_voting_page():
+    return render_template('index.html')  # Serve index.html from templates
 
-# Route to serve the Voting Page
-@app.route("/index")
-def index():
-    return render_template("index.html")
+@app.route('/results')
+def serve_results():
+    return render_template('results.html')  # Serve results.html from templates
 
-# Function to get nearby restaurants
-def get_restaurants(latitude, longitude):
-    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+# API to fetch nearby restaurants using Google Places API
+@app.route('/fetch_restaurants', methods=['POST'])
+def fetch_restaurants():
+    data = request.get_json()
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+
+    url = f"https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     params = {
         "location": f"{latitude},{longitude}",
-        "radius": 2000,
+        "radius": 1500,
         "type": "restaurant",
         "key": GOOGLE_PLACES_API_KEY
     }
     try:
         response = requests.get(url, params=params)
         response.raise_for_status()
-        return response.json().get('results', [])
+        places = response.json().get('results', [])
+        restaurants = [{"name": place['name'], "vicinity": place.get('vicinity', 'Address not available')} for place in places]
+        return jsonify(restaurants)
     except requests.exceptions.RequestException as e:
         print(f"Error fetching restaurants: {e}")
-        return {"error": "Failed to fetch restaurants"}
+        return jsonify({"error": "Failed to fetch restaurants"}), 500
 
-# Function to get events
-def get_events(latitude, longitude):
-    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+# API to fetch nearby events using Google Places API
+@app.route('/fetch_events', methods=['POST'])
+def fetch_events():
+    data = request.get_json()
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+
+    url = f"https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     params = {
         "location": f"{latitude},{longitude}",
         "radius": 5000,
@@ -59,14 +63,17 @@ def get_events(latitude, longitude):
     try:
         response = requests.get(url, params=params)
         response.raise_for_status()
-        return response.json().get('results', [])
+        places = response.json().get('results', [])
+        events = [{"name": place['name'], "address": place.get('vicinity', 'Address not available')} for place in places]
+        return jsonify(events)
     except requests.exceptions.RequestException as e:
         print(f"Error fetching events: {e}")
-        return {"error": "Failed to fetch events"}
+        return jsonify({"error": "Failed to fetch events"}), 500
 
-# Function to get current movies from TMDb
-def get_current_movies():
-    url = "https://api.themoviedb.org/3/movie/now_playing"
+# API to fetch movies using TMDB API
+@app.route('/fetch_movies', methods=['GET'])
+def fetch_movies():
+    url = f"https://api.themoviedb.org/3/movie/now_playing"
     params = {
         "api_key": TMDB_API_KEY,
         "language": "en-US",
@@ -75,86 +82,28 @@ def get_current_movies():
     try:
         response = requests.get(url, params=params)
         response.raise_for_status()
-        data = response.json()
-        print("TMDb API Response:", data)
-        return data.get('results', [])
+        movies = response.json().get('results', [])
+        formatted_movies = [
+            {"title": movie['title'], "overview": movie.get('overview', 'No description available'), "poster_path": movie.get('poster_path')}
+            for movie in movies
+        ]
+        return jsonify(formatted_movies)
     except requests.exceptions.RequestException as e:
         print(f"Error fetching movies: {e}")
-        return {"error": "Failed to fetch movies"}
+        return jsonify({"error": "Failed to fetch movies"}), 500
 
-# Endpoint to fetch restaurants
-@app.route('/fetch_restaurants', methods=['POST'])
-def fetch_restaurants():
-    client_id = request.json.get('client_id')
-    latitude = request.json.get('latitude')
-    longitude = request.json.get('longitude')
-
-    global shared_restaurants
-    shared_restaurants = get_restaurants(latitude, longitude)
-
-    # Populate votes dictionary
-    for restaurant in shared_restaurants:
-        votes['restaurants'][restaurant['name']] = 0
-
-    if client_id == leader_client_id:
-        socketio.emit('restaurant_update', {'restaurants': shared_restaurants})
-
-    return jsonify(shared_restaurants)
-
-
-# Endpoint to fetch events
-@app.route('/fetch_events', methods=['POST'])
-def fetch_events():
-    latitude = request.json.get('latitude')
-    longitude = request.json.get('longitude')
-    events = get_events(latitude, longitude)
-
-    # Populate the votes dictionary
-    for event in events:
-        if event['name'] not in votes['events']:
-            votes['events'][event['name']] = 0
-
-    print(f"Populated events in votes: {votes['events']}")  # Debugging
-    return jsonify(events)
-
-
-
-# Endpoint to fetch movies
-@app.route('/fetch_movies', methods=['GET'])
-def fetch_movies():
-    movies = get_current_movies()
-
-    # Populate votes dictionary with normalized keys
-    for movie in movies:
-        normalized_name = movie['title'].strip().lower()
-        if normalized_name not in votes['movies']:
-            votes['movies'][normalized_name] = 0
-
-    print(f"Populated movies in votes: {votes['movies']}")  # Debugging
-    return jsonify(movies)
-
-
-# Endpoint to handle item deletion
+# API to delete items (mock implementation)
 @app.route('/delete_item', methods=['POST'])
 def delete_item():
-    data = request.json
-    item_name = data['item'].strip().lower()  # Normalize input
-    item_type = data['type']
+    data = request.get_json()
+    return jsonify({"status": "success", "item": data['item']})
 
-    print(f"Attempting to delete normalized item: {item_name} of type: {item_type}")  # Debugging
-    normalized_votes = {k.strip().lower(): k for k in votes.get(item_type, {})}  # Normalize stored keys
-
-    if item_name in normalized_votes:
-        original_name = normalized_votes[item_name]  # Find the original key
-        del votes[item_type][original_name]
-        print(f"Deleted item: {original_name} from type: {item_type}")  # Debugging
-        return jsonify({'status': 'success'})
-    else:
-        print(f"Item {item_name} not found in type: {item_type}")  # Debugging
-        return jsonify({'status': 'error', 'error': 'Item not found'})
-
-
-
+# API to finalize votes and determine the winner
+@app.route('/finalize_votes', methods=['POST'])
+def finalize_votes():
+    data = request.get_json()
+    leader = max(data, key=lambda x: x.get('votes', 0), default=None)
+    return jsonify(leader)
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=8080, debug=True)
+    app.run(debug=True)
